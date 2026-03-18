@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Bug Severity Predictor | AI-Powered Bug Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+         :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --white: #ffffff;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        /* Modern Sidebar */
+        
+        .sidebar {
+            width: 280px;
+            background: var(--white);
+            min-height: 100vh;
+            box-shadow: var(--shadow-xl);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .sidebar-header .subtitle {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+        
+        .sidebar-nav {
+            padding: 1.5rem 0;
+        }
+        
+        .nav-item {
+            margin: 0.25rem 1rem;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.25rem;
+            color: var(--gray-700);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        .nav-link:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+        
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+        /* Main Content */
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        /* Top Bar */
+        
+        .top-bar {
+            background: var(--white);
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray-700);
+            cursor: pointer;
+        }
+        
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+            }
+        }
+        /* Cards */
+        
+        .card {
+            background: var(--white);
+            border: none;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            border: none;
+        }
+        
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .card-body {
+             padding: 1.5rem;
+         }
+        /* Stats Cards */
+        
+        .stat-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .stat-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-card.primary .icon {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+        
+        .stat-card.success .icon {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .stat-card.warning .icon {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+        
+        .stat-card.danger .icon {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        
+        .stat-card h3 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            color: var(--dark);
+        }
+        
+        .stat-card p {
+            color: var(--gray-600);
+            margin: 0;
+            font-weight: 500;
+        }
+        /* Form Styles */
+        
+        .form-section {
+            background: var(--gray-100);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .form-section-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+            font-size: 0.9375rem;
+        }
+        
+        .form-control,
+        .form-select {
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+            font-size: 0.9375rem;
+        }
+        
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+        /* Enhanced dropdown styling for large lists */
+        
+        .select-wrapper {
+            position: relative;
+        }
+        
+        .select-wrapper .form-select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background: var(--white);
+            padding-right: 2.5rem;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #343a40;
+            font-size: 0.875rem;
+        }
+        
+        .form-select option {
+            padding: 0.5rem;
+            background: var(--white);
+            color: var(--dark);
+        }
+        
+        .form-select:focus {
+            z-index: 10;
+        }
+        
+        .form-select:disabled {
+            background-color: var(--gray-100);
+            cursor: not-allowed;
+        }
+        /* Ensure dropdown list is visible */
+        
+        .form-select:focus,
+        .form-select:active {
+            z-index: 9999;
+            position: relative;
+        }
+        
+        .form-control.is-valid {
+            border-color: var(--success);
+        }
+        
+        .form-control.is-invalid {
+            border-color: var(--danger);
+        }
+        /* Buttons */
+        
+        .btn {
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn-outline-secondary {
+            border: 2px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+        
+        .btn-outline-secondary:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-400);
+        }
+        /* Searchable Select */
+        
+        .searchable-select {
+            position: relative;
+        }
+        
+        .searchable-select input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .searchable-select .options-list {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            background: var(--white);
+            display: none;
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .searchable-select .options-list.show {
+            display: block;
+        }
+        
+        .searchable-select .option-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--gray-100);
+            transition: all 0.2s ease;
+        }
+        
+        .searchable-select .option-item:hover {
+            background: var(--gray-100);
+        }
+        
+        .searchable-select .option-item.selected {
+            background: var(--primary);
+            color: white;
+        }
+        /* Collapsible Sections */
+        
+        .collapsible-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--white);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s ease;
+        }
+        
+        .collapsible-header:hover {
+            background: var(--gray-100);
+        }
+        
+        .collapsible-content {
+            display: none;
+            padding: 1rem;
+            background: var(--white);
+            border-radius: 12px;
+            border: 1px solid var(--gray-200);
+            margin-bottom: 1rem;
+        }
+        
+        .collapsible-content.show {
+            display: block;
+        }
+        /* Table */
+        
+        .table {
+            background: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .table thead {
+            background: var(--gray-100);
+        }
+        
+        .table th {
+            font-weight: 700;
+            color: var(--gray-800);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            padding: 1rem;
+        }
+        
+        .table td {
+             padding: 1rem;
+             vertical-align: middle;
+         }
+         /* Analytics and Summary Cards - Equal Height */
+         .analytics-summary-row .card {
+             display: flex;
+             flex-direction: column;
+             height: 100%;
+         }
+         .analytics-summary-row .card-body {
+             flex: 1;
+             display: flex;
+             flex-direction: column;
+         }
+         /* Badges */
+        
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        /* Alerts */
+        
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+        }
+        /* Description Pre */
+        
+        .description-pre {
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        /* Animations */
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        /* Utility Classes */
+        
+        .text-muted {
+            color: var(--gray-600) !important;
+            font-size: 0.875rem;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .modal {
+            display: block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        /* Charts sizing (kept in CSS to avoid inline styles) */
+        
+        .chart-wrap {
+             height: 400px;
+             position: relative;
+         }
+         
+         .products-container {
+             height: 180px;
+         }
+         
+         canvas.chart-canvas {
+             width: 100% !important;
+             height: 100% !important;
+             max-width: 100%;
+             display: block;
+         }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>
+                <i class="fas fa-bug"></i> Bug Predictor
+            </h3>
+            <div class="subtitle">AI-Powered Severity Analysis</div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item">
+                <a class="nav-link active" href="#" onclick="showSection('home'); return false;">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="#" onclick="showSection('predict'); return false;">
+                    <i class="fas fa-magic"></i>
+                    <span>New Prediction</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="#" onclick="showSection('history'); return false;">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="#" onclick="showSection('stats'); return false;">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div>
+                <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle Menu">
+          <i class="fas fa-bars" aria-hidden="true"></i>
+        </button>
+                <h4 class="mb-0" id="page-title">Dashboard</h4>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted" id="current-time"></span>
+            </div>
+        </div>
+
+        <!-- Home Section -->
+        <div id="home-section" class="section active">
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card primary">
+                        <div class="icon">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h3 id="total-predictions">0</h3>
+                        <p>Total Predictions</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card danger">
+                        <div class="icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3 id="high-severity">0</h3>
+                        <p>High Severity</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h3 id="normal-severity">0</h3>
+                        <p>Normal Severity</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 id="recent-predictions">0</h3>
+                        <p>Last 7 Days</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bug Severity Guide Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-info-circle"></i> Bug Severity Levels Guide</h2>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">Understanding bug severity levels helps prioritize fixes and implement appropriate measures. Below is a guide for each severity level with meanings, measures, precautions, and recommended solutions.</p>
+
+                            <div class="row g-4">
+                                <!-- Blocker -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-danger">
+                                        <div class="card-header bg-danger text-white">
+                                            <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Blocker</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Meaning:</strong> Critical issue that prevents any further work or testing. System is completely unusable.</p>
+                                            <p><strong>Measures:</strong> Immediate halt to all development activities. Full team mobilization required.</p>
+                                            <p><strong>Precautions:</strong> Implement emergency rollback procedures. Notify all stakeholders immediately.</p>
+                                            <p><strong>Solutions:</strong> Hotfix deployment, emergency code review, and immediate testing in staging environment.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Critical -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-danger">
+                                        <div class="card-header bg-danger text-white">
+                                            <h5 class="mb-0"><i class="fas fa-exclamation-circle"></i> Critical</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Meaning:</strong> Severe issue causing major functionality failure or data loss. Core features are broken.</p>
+                                            <p><strong>Measures:</strong> High priority fix within hours. Dedicated team assignment.</p>
+                                            <p><strong>Precautions:</strong> Data backup verification, user communication about temporary limitations.</p>
+                                            <p><strong>Solutions:</strong> Priority code fix, comprehensive testing, and phased rollout to minimize impact.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Major -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-warning">
+                                        <div class="card-header bg-warning">
+                                            <h5 class="mb-0"><i class="fas fa-exclamation"></i> Major</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Meaning:</strong> Significant issue affecting important functionality but with workarounds available.</p>
+                                            <p><strong>Measures:</strong> Fix within current sprint or next release cycle.</p>
+                                            <p><strong>Precautions:</strong> Document workarounds for users, monitor impact on user experience.</p>
+                                            <p><strong>Solutions:</strong> Standard development process, thorough testing, and user acceptance validation.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Normal -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-info">
+                                        <div class="card-header bg-info text-white">
+                                            <h5 class="mb-0"><i class="fas fa-info-circle"></i> Normal</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Meaning:</strong> Standard issue that affects functionality but doesn't prevent use of the system.</p>
+                                            <p><strong>Measures:</strong> Include in regular development cycle, prioritize based on user impact.</p>
+                                            <p><strong>Precautions:</strong> Track user reports, consider cumulative effect of similar issues.</p>
+                                            <p><strong>Solutions:</strong> Planned fix in upcoming releases, regression testing to ensure no side effects.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Minor -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-secondary">
+                                        <div class="card-header bg-secondary text-white">
+                                            <h5 class="mb-0"><i class="fas fa-minus-circle"></i> Minor</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Meaning:</strong> Small issue that doesn't significantly impact functionality or user experience.</p>
+                                            <p><strong>Measures:</strong> Low priority, can be deferred to future maintenance releases.</p>
+                                            <p><strong>Precautions:</strong> Monitor for patterns that might indicate larger underlying issues.</p>
+                                            <p><strong>Solutions:</strong> Address during routine maintenance, batch fixes for efficiency.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Trivial -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-light">
+                                        <div class="card-header bg-light">
+                                            <h5 class="mb-0"><i class="fas fa-dot-circle"></i> Trivial</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Meaning:</strong> Very minor issue like cosmetic problems or edge cases with minimal impact.</p>
+                                            <p><strong>Measures:</strong> Lowest priority, often cosmetic or documentation issues.</p>
+                                            <p><strong>Precautions:</strong> Consider user experience impact, even if small.</p>
+                                            <p><strong>Solutions:</strong> Fix as time permits, often bundled with other minor improvements.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-tachometer-alt"></i> Overview</h2>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">Welcome to the Bug Severity Predictor. Use AI-powered machine learning to analyze bug reports and predict their severity levels.</p>
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-primary btn-lg" onclick="showSection('predict')">
+                  <i class="fas fa-plus-circle me-2"></i>Create New Prediction
+                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-lightbulb"></i> Quick Tips</h2>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-3">
+                                    <i class="fas fa-check-circle text-success me-2"></i> Fill required fields for accurate predictions
+                                </li>
+                                <li class="mb-3">
+                                    <i class="fas fa-check-circle text-success me-2"></i> Detailed descriptions improve accuracy
+                                </li>
+                                <li class="mb-3">
+                                    <i class="fas fa-check-circle text-success me-2"></i> View history to track predictions
+                                </li>
+                                <li>
+                                    <i class="fas fa-check-circle text-success me-2"></i> Check analytics for insights
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Predict Section -->
+        <div id="predict-section" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-magic"></i> Predict Bug Severity</h2>
+                </div>
+                <div class="card-body">
+                    <form id="predictForm">
+                        <!-- Required Fields -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-asterisk text-danger"></i> Required Information
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="product_name" class="form-label">Product Name <span class="text-danger">*</span></label>
+                                    <div class="select-wrapper">
+                                        <select class="form-select" id="product_name" name="product_name" required>
+                      <option value="">-- Select Product --</option>
+                      <option value="FIREFOX">FIREFOX</option>
+                      <option value="THUNDERBIRD">THUNDERBIRD</option>
+                      <option value="CORE">CORE</option>
+                      <option value="TOOLKIT">TOOLKIT</option>
+                      <option value="DEVTOOLS">DEVTOOLS</option>
+                      <option value="BUGZILLA">BUGZILLA</option>
+                      <option value="ADDONS.MOZILLA.ORG">ADDONS.MOZILLA.ORG</option>
+                      <option value="CLOUD_SERVICES">CLOUD_SERVICES</option>
+                      <option value="MOZILLA.ORG">MOZILLA.ORG</option>
+                      <option value="WEBSITES">WEBSITES</option>
+                      <option value="WEBTOOLS">WEBTOOLS</option>
+                      <option value="TESTING">TESTING</option>
+                      <option value="RELEASE_ENGINEERING">RELEASE_ENGINEERING</option>
+                      <option value="SOCORRO">SOCORRO</option>
+                      <option value="NSS">NSS</option>
+                      <!-- More options will be loaded dynamically from backend -->
+                    </select>
+                                    </div>
+                                    <small class="text-muted" id="product_count">Loading more products from backend...</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="component_name" class="form-label">Component Name <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="component_name" name="component_name" required>
+                    <option value="">-- Select Component --</option>
+                    <option value="General">General</option>
+                    <option value="Backend">Backend</option>
+                    <option value="UI">UI</option>
+                    <option value="Security">Security</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Database">Database</option>
+                    <option value="API">API</option>
+                    <option value="Accessibility">Accessibility</option>
+                    <option value="Graphics">Graphics</option>
+                    <option value="Performance">Performance</option>
+                    <option value="Mobile">Mobile</option>
+                    <option value="Build">Build</option>
+                    <option value="Testing">Testing</option>
+                    <option value="Documentation">Documentation</option>
+                    <option value="Localization">Localization</option>
+                    <!-- More options will be loaded dynamically from backend -->
+                  </select>
+                                    <small class="text-muted" id="component_count">Loading more components from backend...</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="resolution_category" class="form-label">Resolution Category <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="resolution_category" name="resolution_category" required>
+    <option value="">Select Resolution</option>
+    <option value="1">Fixed</option>
+    <option value="2">Duplicate</option>
+    <option value="3">WontFix</option>
+    <option value="4">Invalid</option>
+    <option value="5">WorksForMe</option>
+    <option value="6">Incomplete</option>
+    <option value="7">CannotReproduce</option>
+    <option value="8">ByDesign</option>
+    <option value="9">Deferred</option>
+  </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="status_category" class="form-label">Status Category <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="status_category" name="status_category" required>
+    <option value="">Select Status</option>
+    <option value="1">Closed</option>
+    <option value="2">Resolved</option>
+  </select>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-file-alt"></i> Bug Description <span class="text-danger">*</span>
+                            </div>
+                            <div class="mb-3">
+                                <div class="btn-group w-100 mb-3" role="group">
+                                    <input type="radio" class="btn-check" name="desc_mode" id="desc_mode_separate" value="separate" checked>
+                                    <label class="btn btn-outline-primary" for="desc_mode_separate">Separate Fields</label>
+                                    <input type="radio" class="btn-check" name="desc_mode" id="desc_mode_full" value="full">
+                                    <label class="btn btn-outline-primary" for="desc_mode_full">Single Description</label>
+                                </div>
+                            </div>
+                            <div id="separate_desc_fields">
+                                <div class="mb-3">
+                                    <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="short_description" name="short_description" placeholder="Brief summary of the bug">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="long_description" class="form-label">Long Description <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="long_description" name="long_description" rows="5" placeholder="Detailed description, steps to reproduce, etc."></textarea>
+                                </div>
+                            </div>
+                            <div id="full_desc_field" class="hidden">
+                                <label for="full_description" class="form-label">Full Description <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="full_description" name="full_description" rows="6" placeholder="Enter complete bug description"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Optional Fields - Collapsible -->
+                        <div class="collapsible-header" onclick="toggleCollapsible('optional-fields')">
+                            <div>
+                                <i class="fas fa-cog me-2"></i>
+                                <strong>Additional Information (Optional)</strong>
+                            </div>
+                            <i class="fas fa-chevron-down" id="optional-fields-icon"></i>
+                        </div>
+                        <div class="collapsible-content" id="optional-fields">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="bug_id" class="form-label">Bug ID</label>
+                                    <input type="text" class="form-control" id="bug_id" name="bug_id" placeholder="e.g., BUGZILLA-294734">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="creation_date" class="form-label">Creation Date</label>
+                                    <input type="date" class="form-control" id="creation_date" name="creation_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="assignee_name" class="form-label">Assignee Name</label>
+                                    <input type="text" class="form-control" id="assignee_name" name="assignee_name" placeholder="e.g., developer1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="reporter_name" class="form-label">Reporter Name</label>
+                                    <input type="text" class="form-control" id="reporter_name" name="reporter_name" placeholder="e.g., tester1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="resolution_code" class="form-label">Resolution Code</label>
+                                    <input type="number" class="form-control" id="resolution_code" name="resolution_code" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="status_code" class="form-label">Status Code</label>
+                                    <input type="number" class="form-control" id="status_code" name="status_code" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="quantity_of_votes" class="form-label">Votes</label>
+                                    <input type="number" class="form-control" id="quantity_of_votes" name="quantity_of_votes" min="0" value="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="quantity_of_comments" class="form-label">Comments</label>
+                                    <input type="number" class="form-control" id="quantity_of_comments" name="quantity_of_comments" min="0" value="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="update_date" class="form-label">Update Date</label>
+                                    <input type="date" class="form-control" id="update_date" name="update_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="resolution_date" class="form-label">Resolution Date</label>
+                                    <input type="date" class="form-control" id="resolution_date" name="resolution_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="bug_fix_time" class="form-label">Fix Time (Days)</label>
+                                    <input type="number" class="form-control" id="bug_fix_time" name="bug_fix_time" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <button type="button" class="btn btn-outline-secondary" id="clearBtn">
+                <i class="fas fa-eraser me-2"></i>Clear
+              </button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <span class="spinner-border spinner-border-sm d-none me-2" role="status"></span>
+                <i class="fas fa-magic me-2"></i>Predict Severity
+              </button>
+                        </div>
+
+                        <div id="out" class="alert mt-3 hidden" role="alert"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div id="history-section" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-history"></i> Prediction History</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Bug ID</th>
+                                    <th scope="col">Product</th>
+                                    <th scope="col">Component</th>
+                                    <th scope="col">Severity</th>
+                                    <th scope="col">Description</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-5">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i> No predictions yet. Make your first prediction!
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div id="stats-section" class="section">
+            <div class="row g-4 mb-4 analytics-summary-row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-chart-pie"></i> Analytics</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <h5 class="mb-2">Severity Distribution</h5>
+                                    <div class="chart-wrap">
+                                        <canvas id="severityChart" class="chart-canvas"></canvas>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5 class="mb-2">Predictions Trend (daily)</h5>
+                                    <div class="chart-wrap">
+                                        <canvas id="trendChart" class="chart-canvas"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr class="my-4">
+                            <div class="d-flex justify-content-center">
+                                <button type="button" class="btn btn-primary" onclick="exportReportToCSV()"><i class="fas fa-download"></i> Export Report to CSV</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-info-circle"></i> Summary</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="statsSummary">
+                                <p class="text-muted">No data available yet.</p>
+                            </div>
+                            <hr>
+                            <h5 class="mb-2">Top Products</h5>
+                            <div class="products-container">
+                                <canvas id="productsChart" class="chart-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-filter"></i> Filters</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Filter by Severity</label>
+                                    <select id="severityFilter" class="form-select">
+                                        <option value="">All Severities</option>
+                                        <option value="Blocker">Blocker</option>
+                                        <option value="Critical">Critical</option>
+                                        <option value="Major">Major</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="Minor">Minor</option>
+                                        <option value="Trivial">Trivial</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">From Date</label>
+                                    <input type="date" id="fromDate" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">To Date</label>
+                                    <input type="date" id="toDate" class="form-control">
+                                </div>
+                            </div>
+                            <div class="row g-3 mt-2">
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary" onclick="applyFilters()"><i class="fas fa-check"></i> Apply Filters</button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i> Reset</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Results Section -->
+            <div class="row g-4 mt-4">
+                <div class="col-12">
+                    <div class="card" id="resultsCard" style="display: none;">
+                        <div class="card-header">
+                            <h2><i class="fas fa-search"></i> Filter Results</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <div class="stat-card primary">
+                                        <div class="icon">
+                                            <i class="fas fa-database"></i>
+                                        </div>
+                                        <h3 id="filteredCount">0</h3>
+                                        <p>Matching Predictions</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="stat-card success">
+                                        <div class="icon">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                        <h3 id="filterLowSeverity">0</h3>
+                                        <p>Low Severity</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="stat-card warning">
+                                        <div class="icon">
+                                            <i class="fas fa-exclamation"></i>
+                                        </div>
+                                        <h3 id="filterMediumSeverity">0</h3>
+                                        <p>Medium Severity</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="stat-card danger">
+                                        <div class="icon">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </div>
+                                        <h3 id="filterHighSeverity">0</h3>
+                                        <p>High Severity</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr class="my-3">
+                            <div id="filterResultsDetails" class="text-muted">
+                                <p>No filters applied yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+         let predictions = JSON.parse(localStorage.getItem('bugPredictions')) || [];
+         let severityChart = null;
+         let productsChart = null;
+         let trendChart = null;
+         let filteredPredictions = [...predictions];
+         let currentFilters = {
+             severity: '',
+             fromDate: '',
+             toDate: ''
+         };
+
+         // Navigation
+        function showSection(sectionName) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(sectionName + '-section').classList.add('active');
+            const navLink = event.target.closest('.nav-link');
+            if (navLink) navLink.classList.add('active');
+
+            const titles = {
+                'home': 'Dashboard',
+                'predict': 'New Prediction',
+                'history': 'Prediction History',
+                'stats': 'Analytics'
+            };
+            document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
+
+            if (sectionName === 'history') loadHistory();
+            else if (sectionName === 'stats') loadStatistics();
+            else if (sectionName === 'home') updateDashboardStats();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        function toggleCollapsible(id) {
+            const content = document.getElementById(id);
+            const icon = document.getElementById(id + '-icon');
+            content.classList.toggle('show');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+        }
+
+        // Update dashboard stats
+        function updateDashboardStats() {
+            const total = predictions.length;
+            const highSeverity = predictions.filter(p => {
+                if (!p.severity) return false;
+                const lower = p.severity.toLowerCase();
+                return lower === 'blocker' || lower === 'critical' || lower === 'major';
+            }).length;
+            const normalSeverity = predictions.filter(p => {
+                if (!p.severity) return false;
+                const lower = p.severity.toLowerCase();
+                return lower === 'normal' || lower === 'minor' || lower === 'trivial';
+            }).length;
+            const recent = predictions.filter(p => {
+                const predDate = new Date(p.timestamp);
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return predDate >= weekAgo;
+            }).length;
+
+            document.getElementById('total-predictions').textContent = total;
+            document.getElementById('high-severity').textContent = highSeverity;
+            document.getElementById('normal-severity').textContent = normalSeverity;
+            document.getElementById('recent-predictions').textContent = recent;
+        }
+
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Load history
+        function loadHistory() {
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+
+            if (predictions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5"><i class="fas fa-inbox fa-3x mb-3 d-block"></i>No predictions yet.</td></tr>';
+                return;
+            }
+
+            predictions.forEach((pred, index) => {
+                const row = document.createElement('tr');
+                let description = '';
+                if (pred.full_description) description = pred.full_description;
+                else if (pred.short_description || pred.long_description) {
+                    description = [pred.short_description, pred.long_description].filter(d => d).join(' ');
+                }
+                const shortDesc = description.length > 50 ? description.substring(0, 50) + '...' : description;
+
+                row.innerHTML = `
+          <td>${new Date(pred.timestamp).toLocaleDateString()}</td>
+          <td>${pred.bug_id || '-'}</td>
+          <td>${pred.product_name || 'N/A'}</td>
+          <td>${pred.component_name || 'N/A'}</td>
+          <td><span class="badge bg-${getSeverityColor(pred.severity)}">${pred.severity || 'Unknown'}</span></td>
+          <td>${shortDesc}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewPredictionDetails(${index})">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deletePrediction(${index})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // View details
+        function viewPredictionDetails(index) {
+            const pred = predictions[index];
+            if (!pred) return;
+
+            let details = '<dl class="row"><dt class="col-sm-4">Bug ID:</dt><dd class="col-sm-8">' + (pred.bug_id || 'N/A') + '</dd>';
+            if (pred.creation_date) details += '<dt class="col-sm-4">Creation Date:</dt><dd class="col-sm-8">' + pred.creation_date + '</dd>';
+            details += '<dt class="col-sm-4">Product:</dt><dd class="col-sm-8">' + (pred.product_name || 'N/A') + '</dd>';
+            details += '<dt class="col-sm-4">Component:</dt><dd class="col-sm-8">' + (pred.component_name || 'N/A') + '</dd>';
+            if (pred.resolution_category) details += '<dt class="col-sm-4">Resolution:</dt><dd class="col-sm-8">' + pred.resolution_category + '</dd>';
+            if (pred.status_category) details += '<dt class="col-sm-4">Status:</dt><dd class="col-sm-8">' + pred.status_category + '</dd>';
+            if (pred.assignee_name) details += '<dt class="col-sm-4">Assignee:</dt><dd class="col-sm-8">' + pred.assignee_name + '</dd>';
+            if (pred.reporter_name) details += '<dt class="col-sm-4">Reporter:</dt><dd class="col-sm-8">' + pred.reporter_name + '</dd>';
+            let description = '';
+            if (pred.full_description) description = pred.full_description;
+            else if (pred.short_description || pred.long_description) {
+                description = [pred.short_description, pred.long_description].filter(d => d).join('\n\n');
+            }
+            if (description) details += '<dt class="col-sm-4">Description:</dt><dd class="col-sm-8"><pre class="description-pre">' + description + '</pre></dd>';
+            details += '<dt class="col-sm-4">Predicted Severity:</dt><dd class="col-sm-8"><span class="badge bg-' + getSeverityColor(pred.severity) + '">' + (pred.severity || 'Unknown') + '</span></dd>';
+            details += '<dt class="col-sm-4">Prediction Date:</dt><dd class="col-sm-8">' + new Date(pred.timestamp).toLocaleString() + '</dd></dl>';
+
+            const modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.style.display = 'block';
+            modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Prediction Details</h5>
+              <button type="button" class="btn-close" onclick="this.closest('.modal').remove(); document.querySelector('.modal-backdrop')?.remove();"></button>
+            </div>
+            <div class="modal-body">${details}</div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove(); document.querySelector('.modal-backdrop')?.remove();">Close</button>
+            </div>
+          </div>
+        </div>
+      `;
+            document.body.appendChild(modal);
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.onclick = () => {
+                modal.remove();
+                backdrop.remove();
+            };
+            document.body.appendChild(backdrop);
+        }
+
+        // Delete prediction
+        function deletePrediction(index) {
+            if (index < 0 || index >= predictions.length) return;
+
+            // Show confirmation dialog
+            const confirmed = confirm('Are you sure you want to delete this prediction? This action cannot be undone.');
+            if (!confirmed) return;
+
+            // Remove the prediction from the array
+            predictions.splice(index, 1);
+
+            // Save updated predictions to localStorage
+            localStorage.setItem('bugPredictions', JSON.stringify(predictions));
+
+            // Reload history and update stats
+            loadHistory();
+            updateDashboardStats();
+
+            // If on stats page, reload stats
+            if (document.getElementById('stats-section').classList.contains('active')) {
+                loadStatistics();
+            }
+        }
+
+        // Apply filters function
+         function applyFilters() {
+             const severity = document.getElementById('severityFilter').value;
+             const fromDate = document.getElementById('fromDate').value;
+             const toDate = document.getElementById('toDate').value;
+
+             currentFilters = {
+                 severity: severity,
+                 fromDate: fromDate,
+                 toDate: toDate
+             };
+
+             filteredPredictions = predictions.filter(pred => {
+                 // Filter by severity
+                 if (severity && pred.severity !== severity) {
+                     return false;
+                 }
+
+                 // Filter by date range
+                 if (fromDate || toDate) {
+                     const predDate = pred.timestamp ? new Date(pred.timestamp) : null;
+                     if (predDate) {
+                         if (fromDate) {
+                             const from = new Date(fromDate);
+                             if (predDate < from) return false;
+                         }
+                         if (toDate) {
+                             const to = new Date(toDate);
+                             to.setDate(to.getDate() + 1);
+                             if (predDate >= to) return false;
+                         }
+                     }
+                 }
+
+                 return true;
+             });
+
+             loadStatistics();
+             updateFilterResults();
+         }
+
+         // Update filter results display
+         function updateFilterResults() {
+             const resultsCard = document.getElementById('resultsCard');
+             const filteredCount = document.getElementById('filteredCount');
+             const filterLowSeverity = document.getElementById('filterLowSeverity');
+             const filterMediumSeverity = document.getElementById('filterMediumSeverity');
+             const filterHighSeverity = document.getElementById('filterHighSeverity');
+             const filterResultsDetails = document.getElementById('filterResultsDetails');
+
+             const total = filteredPredictions.length;
+             
+             // Count by severity level
+             const lowSeverity = filteredPredictions.filter(p => {
+                 if (!p.severity) return false;
+                 const lower = p.severity.toLowerCase();
+                 return lower === 'minor' || lower === 'trivial';
+             }).length;
+
+             const mediumSeverity = filteredPredictions.filter(p => {
+                 if (!p.severity) return false;
+                 const lower = p.severity.toLowerCase();
+                 return lower === 'normal' || lower === 'major';
+             }).length;
+
+             const highSeverity = filteredPredictions.filter(p => {
+                 if (!p.severity) return false;
+                 const lower = p.severity.toLowerCase();
+                 return lower === 'blocker' || lower === 'critical';
+             }).length;
+
+             // Update display
+             filteredCount.textContent = total;
+             filterLowSeverity.textContent = lowSeverity;
+             filterMediumSeverity.textContent = mediumSeverity;
+             filterHighSeverity.textContent = highSeverity;
+
+             // Update details text
+             const filterSummary = [];
+             if (currentFilters.severity) {
+                 filterSummary.push(`<strong>Severity:</strong> ${currentFilters.severity}`);
+             }
+             if (currentFilters.fromDate) {
+                 filterSummary.push(`<strong>From Date:</strong> ${new Date(currentFilters.fromDate).toLocaleDateString()}`);
+             }
+             if (currentFilters.toDate) {
+                 filterSummary.push(`<strong>To Date:</strong> ${new Date(currentFilters.toDate).toLocaleDateString()}`);
+             }
+
+             let detailsHTML = `<p><strong>Active Filters:</strong></p>`;
+             if (filterSummary.length > 0) {
+                 detailsHTML += `<ul class="list-unstyled">`;
+                 filterSummary.forEach(item => {
+                     detailsHTML += `<li><i class="fas fa-check-circle text-success me-2"></i>${item}</li>`;
+                 });
+                 detailsHTML += `</ul>`;
+             } else {
+                 detailsHTML += `<p class="text-muted">No filters applied</p>`;
+             }
+             
+             detailsHTML += `<p class="mt-3"><strong>Results:</strong> Found <strong>${total}</strong> prediction${total !== 1 ? 's' : ''} matching your criteria.</p>`;
+             
+             filterResultsDetails.innerHTML = detailsHTML;
+
+             // Show results card if filters are applied
+             if (Object.values(currentFilters).some(val => val)) {
+                 resultsCard.style.display = 'block';
+             }
+         }
+
+         // Reset filters function
+          function resetFilters() {
+              document.getElementById('severityFilter').value = '';
+              document.getElementById('fromDate').value = '';
+              document.getElementById('toDate').value = '';
+
+              currentFilters = {
+                  severity: '',
+                  fromDate: '',
+                  toDate: ''
+              };
+
+              filteredPredictions = [...predictions];
+              loadStatistics();
+
+              // Hide results card and reset details
+              document.getElementById('resultsCard').style.display = 'none';
+              document.getElementById('filterResultsDetails').innerHTML = '<p>No filters applied yet.</p>';
+          }
+
+         // Export report to CSV
+         function exportReportToCSV() {
+             if (filteredPredictions.length === 0) {
+                 alert('No data to export. Please apply filters or ensure you have predictions.');
+                 return;
+             }
+
+             let csvContent = 'Bug ID,Product,Component,Severity,Status,Resolution,Assignee,Reporter,Creation Date,Prediction Date,Description\n';
+
+             filteredPredictions.forEach(pred => {
+                 const bugId = (pred.bug_id || '').replace(/,/g, ';');
+                 const product = (pred.product_name || '').replace(/,/g, ';');
+                 const component = (pred.component_name || '').replace(/,/g, ';');
+                 const severity = (pred.severity || '').replace(/,/g, ';');
+                 const status = (pred.status_category || '').replace(/,/g, ';');
+                 const resolution = (pred.resolution_category || '').replace(/,/g, ';');
+                 const assignee = (pred.assignee_name || '').replace(/,/g, ';');
+                 const reporter = (pred.reporter_name || '').replace(/,/g, ';');
+                 const creationDate = (pred.creation_date || '').replace(/,/g, ';');
+                 const predDate = pred.timestamp ? new Date(pred.timestamp).toLocaleString() : '';
+                 const description = (pred.full_description || '').replace(/,/g, ';').replace(/\n/g, ' ');
+
+                 const row = `"${bugId}","${product}","${component}","${severity}","${status}","${resolution}","${assignee}","${reporter}","${creationDate}","${predDate}","${description}"`;
+                 csvContent += row + '\n';
+             });
+
+             // Create blob and download
+             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+             const link = document.createElement('a');
+             const url = URL.createObjectURL(blob);
+
+             link.setAttribute('href', url);
+             link.setAttribute('download', `bug_severity_report_${new Date().toISOString().slice(0, 10)}.csv`);
+             link.style.visibility = 'hidden';
+
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+         }
+
+         // Load statistics (creates three small charts and a short analysis)
+          function loadStatistics() {
+               const summaryEl = document.getElementById('statsSummary');
+               const dataSource = filteredPredictions.length > 0 ? filteredPredictions : predictions;
+              
+              if (dataSource.length === 0) {
+                  summaryEl.innerHTML = '<p class="text-muted">No data available yet.</p>';
+                  // Destroy any existing charts
+                  if (severityChart) {
+                      severityChart.destroy();
+                      severityChart = null;
+                  }
+                  if (productsChart) {
+                      productsChart.destroy();
+                      productsChart = null;
+                  }
+                  if (trendChart) {
+                      trendChart.destroy();
+                      trendChart = null;
+                  }
+                  return;
+              }
+
+              // Severity distribution
+              const severityCounts = {};
+              // Product counts and daily trend
+              const productCounts = {};
+              const dailyCounts = {}; // key = YYYY-MM-DD
+
+              dataSource.forEach(pred => {
+                  const severity = pred.severity || 'Unknown';
+                  severityCounts[severity] = (severityCounts[severity] || 0) + 1;
+
+                  const product = pred.product_name || 'Unknown';
+                  productCounts[product] = (productCounts[product] || 0) + 1;
+
+                  const ts = pred.timestamp ? new Date(pred.timestamp) : null;
+                  if (ts && !isNaN(ts)) {
+                      const day = ts.toISOString().slice(0, 10);
+                      dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+                  }
+              });
+
+              const total = dataSource.length;
+
+              // Short textual analysis
+              const mostCommon = Object.keys(severityCounts).reduce((a, b) => severityCounts[a] > severityCounts[b] ? a : b);
+              const highSeverityRate = ((dataSource.filter(p => {
+                  if (!p.severity) return false;
+                  const lower = p.severity.toLowerCase();
+                  return lower === 'blocker' || lower === 'critical' || lower === 'major';
+              }).length / total) * 100).toFixed(1);
+
+            // Top 5 products
+            const topProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            summaryEl.innerHTML = `
+                <p><strong>Total Predictions:</strong> ${total}</p>
+                <p><strong>Most Common Severity:</strong> ${mostCommon} (${severityCounts[mostCommon]})</p>
+                <p><strong>High Severity Rate:</strong> ${highSeverityRate}%</p>
+                <p><strong>Top Products:</strong> ${topProducts.map(t => `${t[0]} (${t[1]})`).join(', ')}</p>
+                <p class="text-muted">Charts below update from local history stored in your browser.</p>
+            `;
+
+            // Severity doughnut (small)
+            const severityCtx = document.getElementById('severityChart').getContext('2d');
+            if (severityChart) severityChart.destroy();
+            severityChart = new Chart(severityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(severityCounts),
+                    datasets: [{
+                        data: Object.values(severityCounts),
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#6366f1', '#8b5cf6', '#6b7280'],
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Products bar chart
+            const productsCtx = document.getElementById('productsChart').getContext('2d');
+            const productsLabels = Object.keys(productCounts).sort((a,b) => productCounts[b]-productCounts[a]);
+            const productsData = productsLabels.map(l => productCounts[l]);
+            // keep only top 8 for readability
+            const topN = 8;
+            const labelsTop = productsLabels.slice(0, topN);
+            const dataTop = labelsTop.map(l => productCounts[l]);
+            if (productsChart) productsChart.destroy();
+            productsChart = new Chart(productsCtx, {
+                type: 'bar',
+                data: { labels: labelsTop, datasets: [{ label: 'Predictions', data: dataTop, backgroundColor: '#3b82f6' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, minRotation: 0 } } } }
+            });
+
+            // Trend line chart (daily counts)
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            const days = Object.keys(dailyCounts).sort();
+            const dayCounts = days.map(d => dailyCounts[d]);
+            if (trendChart) trendChart.destroy();
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: { labels: days, datasets: [{ label: 'Predictions per day', data: dayCounts, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // Severity color helper
+        function getSeverityColor(severity) {
+            if (!severity) return 'secondary';
+            const lower = severity.toLowerCase();
+            if (lower === 'blocker' || lower === 'critical') return 'danger';
+            if (lower === 'major') return 'warning';
+            if (lower === 'minor') return 'info';
+            if (lower === 'normal') return 'success';
+            if (lower === 'trivial') return 'secondary';
+            return 'info';
+        }
+
+        // Form handling
+        const form = document.getElementById('predictForm');
+        const descModeRadios = document.querySelectorAll('input[name="desc_mode"]');
+        const separateDescFields = document.getElementById('separate_desc_fields');
+        const fullDescField = document.getElementById('full_desc_field');
+
+        descModeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'separate') {
+                    separateDescFields.classList.remove('hidden');
+                    fullDescField.classList.add('hidden');
+                    document.getElementById('full_description').removeAttribute('required');
+                    document.getElementById('short_description').setAttribute('required', 'required');
+                    document.getElementById('long_description').setAttribute('required', 'required');
+                } else {
+                    separateDescFields.classList.add('hidden');
+                    fullDescField.classList.remove('hidden');
+                    document.getElementById('short_description').removeAttribute('required');
+                    document.getElementById('long_description').removeAttribute('required');
+                    document.getElementById('full_description').setAttribute('required', 'required');
+                }
+            });
+        });
+
+        form.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const out = document.getElementById('out');
+            const submitBtn = document.getElementById('submitBtn');
+            const spinner = submitBtn.querySelector('.spinner-border');
+
+            out.classList.add('hidden');
+            submitBtn.disabled = true;
+            spinner.classList.remove('d-none');
+
+            const fd = new FormData(form);
+            const payload = {};
+            for (const [k, v] of fd.entries()) {
+                if (k !== 'desc_mode') payload[k] = v;
+            }
+
+            const descMode = document.querySelector('input[name="desc_mode"]:checked').value;
+            if (descMode === 'separate') {
+                payload.short_description = document.getElementById('short_description').value.trim();
+                payload.long_description = document.getElementById('long_description').value.trim();
+                delete payload.full_description;
+            } else {
+                payload.full_description = document.getElementById('full_description').value.trim();
+                delete payload.short_description;
+                delete payload.long_description;
+            }
+
+            payload.quantity_of_votes = parseInt(payload.quantity_of_votes || 0) || 0;
+            payload.quantity_of_comments = parseInt(payload.quantity_of_comments || 0) || 0;
+
+            try {
+                const resp = await fetch('http://localhost:5000/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const parsed = await resp.json();
+                let predictedSeverity = 'Unknown';
+
+                if (resp.ok && parsed.predicted_severity) {
+                    predictedSeverity = parsed.predicted_severity;
+                    out.className = 'alert alert-success';
+                    out.innerHTML = '<i class="fas fa-check-circle me-2"></i>Predicted severity: <strong>' + predictedSeverity + '</strong>';
+                } else {
+                    out.className = 'alert alert-danger';
+                    out.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Error: ' + (parsed.message || 'Unknown error');
+                }
+                out.style.display = 'block';
+
+                const prediction = {...payload,
+                    severity: predictedSeverity,
+                    timestamp: new Date().toISOString()
+                };
+                if (!prediction.full_description) {
+                    if (prediction.short_description && prediction.long_description) {
+                        prediction.full_description = `${prediction.short_description} ${prediction.long_description}`.trim();
+                    } else if (prediction.short_description) {
+                        prediction.full_description = prediction.short_description;
+                    } else if (prediction.long_description) {
+                        prediction.full_description = prediction.long_description;
+                    }
+                }
+                predictions.push(prediction);
+                localStorage.setItem('bugPredictions', JSON.stringify(predictions));
+                updateDashboardStats();
+            } catch (err) {
+                out.className = 'alert alert-danger';
+                let errorMessage = 'Network error: Unable to connect to the prediction service. ';
+                if (err.name === 'AbortError') {
+                    errorMessage += 'Request timed out. ';
+                } else {
+                    errorMessage += err.message;
+                }
+                errorMessage += ' Please ensure the backend server is running and try again.';
+                out.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>' + errorMessage;
+                out.classList.remove('hidden');
+
+                // Log the error for debugging
+                console.error('Prediction error:', err);
+            } finally {
+                submitBtn.disabled = false;
+                spinner.classList.add('d-none');
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            form.reset();
+            document.getElementById('out').classList.add('hidden');
+            document.getElementById('desc_mode_separate').checked = true;
+            separateDescFields.classList.remove('hidden');
+            fullDescField.classList.add('hidden');
+        });
+
+        // Load options from backend
+        async function loadOptions() {
+            // Fallback options if API fails
+            const fallbackProducts = [
+                'FIREFOX', 'THUNDERBIRD', 'CORE', 'TOOLKIT', 'DEVTOOLS', 'BUGZILLA',
+                'ADDONS.MOZILLA.ORG', 'CLOUD_SERVICES', 'MOZILLA.ORG', 'WEBSITES',
+                'WEBTOOLS', 'TESTING', 'RELEASE_ENGINEERING', 'SOCORRO', 'NSS'
+            ];
+
+            const fallbackComponents = [
+                'General', 'Backend', 'UI', 'Security', 'Networking', 'Database',
+                'API', 'Accessibility', 'Graphics', 'Performance', 'Mobile',
+                'Build', 'Testing', 'Documentation', 'Localization'
+            ];
+
+            try {
+                console.log('Loading options from /options endpoint...');
+                // Try multiple URL formats with timeout
+                let resp = null;
+                const urls = [
+                    'http://localhost:5000/options',
+                    '/options',
+                    'http://127.0.0.1:5000/options'
+                ];
+
+                const timeout = 5000; // 5 seconds timeout
+                for (const url of urls) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                        resp = await fetch(url, {
+                            signal: controller.signal
+                        });
+
+                        clearTimeout(timeoutId);
+                        if (resp.ok) {
+                            console.log(`Successfully connected to ${url}`);
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to fetch from ${url}: ${e.message}`);
+                        if (e.name === 'AbortError') {
+                            console.log('Request timed out');
+                        }
+                    }
+                }
+
+                if (resp && resp.ok) {
+                    const options = await resp.json();
+                    console.log('Options loaded:', {
+                        products: options.product_name ? options.product_name.length : 0,
+                        components: options.component_name ? options.component_name.length : 0
+                    });
+
+                    if (options.product_name && options.product_name.length > 0) {
+                        populateSelect('product_name', options.product_name);
+                    } else {
+                        console.warn('No products in response, using fallback');
+                        populateSelect('product_name', fallbackProducts);
+                    }
+
+                    if (options.component_name && options.component_name.length > 0) {
+                        populateSelect('component_name', options.component_name);
+                    } else {
+                        console.warn('No components in response, using fallback');
+                        populateSelect('component_name', fallbackComponents);
+                    }
+
+                    if (options.resolution_category) {
+                        populateSelect('resolution_category', options.resolution_category);
+                    }
+
+                    if (options.status_category) {
+                        populateSelect('status_category', options.status_category);
+                    }
+                } else {
+                    throw new Error('Could not connect to backend');
+                }
+            } catch (err) {
+                console.error('Failed to load options from backend:', err);
+                console.log('Using fallback options...');
+
+                // Use fallback options
+                populateSelect('product_name', fallbackProducts);
+                populateSelect('component_name', fallbackComponents);
+                populateSelect('resolution_category', ['fixed']);
+                populateSelect('status_category', ['closed', 'resolved']);
+
+                // Show warning to user
+                const productCount = document.getElementById('product_count');
+                const componentCount = document.getElementById('component_count');
+                if (productCount) {
+                    productCount.innerHTML = '<span class="text-warning">⚠️ Using limited options. Start backend for full list.</span>';
+                }
+                if (componentCount) {
+                    componentCount.innerHTML = '<span class="text-warning">⚠️ Using limited options. Start backend for full list.</span>';
+                }
+            }
+        }
+
+        function populateSelect(selectId, options) {
+            const select = document.getElementById(selectId);
+            if (!select) {
+                console.error(`❌ Select element with id '${selectId}' not found`);
+                return;
+            }
+
+            if (!options || !Array.isArray(options) || options.length === 0) {
+                console.warn(`⚠️ No options provided for ${selectId}`);
+                return;
+            }
+
+            // Keep existing hardcoded options, just add new ones from backend
+            const existingValues = new Set();
+            Array.from(select.options).forEach(opt => {
+                if (opt.value) existingValues.add(opt.value);
+            });
+
+            // Add all options from dataset (skip if already exists)
+            let addedCount = 0;
+            options.forEach(option => {
+                const optionStr = String(option).trim();
+                if (optionStr && !existingValues.has(optionStr)) {
+                    const opt = document.createElement('option');
+                    opt.value = optionStr;
+                    opt.textContent = optionStr;
+                    select.appendChild(opt);
+                    existingValues.add(optionStr);
+                    addedCount++;
+                }
+            });
+
+            // Update count info
+            const countElement = document.getElementById(selectId === 'product_name' ? 'product_count' : 'component_count');
+            if (countElement) {
+                countElement.textContent = `${addedCount} options available`;
+            }
+
+            console.log(`✅ Populated ${selectId} with ${addedCount} options`);
+            console.log(`   Dropdown now has ${select.options.length} total options`);
+
+            // Force a re-render to ensure visibility
+            select.style.display = 'none';
+            select.offsetHeight; // Trigger reflow
+            select.style.display = '';
+
+            // Test: Log first few options to verify
+            if (select.options.length > 1) {
+                console.log(`   First option: "${select.options[1].text}"`);
+            }
+        }
+
+        // Test dropdown function
+        function testDropdown(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select) {
+                alert(`Dropdown ${selectId} not found!`);
+                return;
+            }
+            const count = select.options.length;
+            const firstOption = count > 1 ? select.options[1].text : 'None';
+            alert(`${selectId}:\nTotal options: ${count}\nFirst option: ${firstOption}\n\nClick OK to see all options in console.`);
+            console.log(`All options in ${selectId}:`, Array.from(select.options).map(opt => opt.text));
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 DOM loaded, initializing...');
+            updateDashboardStats();
+
+            // Load options immediately
+            loadOptions();
+
+            showSection('home');
+        });
+
+        // Also try loading options if DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadOptions);
+        } else {
+            // DOM already loaded
+            loadOptions();
+        }
+    </script>
+</body>
+
+</html>

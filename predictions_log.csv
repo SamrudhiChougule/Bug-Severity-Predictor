@@ -1,0 +1,3 @@
+bug_id,creation_date,component_name,product_name,short_description,long_description,assignee_name,reporter_name,resolution_category,resolution_code,status_category,status_code,update_date,quantity_of_votes,quantity_of_comments,resolution_date,bug_fix_time,predicted_severity,prediction_timestamp
+,,UI,FIREFOX,Test prediction for logging fix,This is a test to verify that predictions are logged in a single file without creating backups.,,,fixed,,resolved,,,5,2,,,normal,2025-11-11 20:23:03
+,,UI,FIREFOX,Test prediction for logging fix - second test,This is a second test to verify that predictions are logged in a single file without creating backups.,,,fixed,,resolved,,,5,2,,,normal,2025-11-11 20:24:46

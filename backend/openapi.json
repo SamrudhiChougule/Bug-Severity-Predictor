@@ -1,0 +1,55 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Bug Severity Predictor API",
+        "version": "1.0.0",
+        "description": "Predict bug severity from bug report fields"
+    },
+    "paths": {
+        "/predict": {
+            "post": {
+                "summary": "Predict bug severity",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "component_name": { "type": "string" },
+                                    "product_name": { "type": "string" },
+                                    "short_description": { "type": "string" },
+                                    "long_description": { "type": "string" },
+                                    "full_description": { "type": "string" },
+                                    "resolution_category": { "type": "string" },
+                                    "status_category": { "type": "string" },
+                                    "quantity_of_votes": { "type": "integer", "default": 0 },
+                                    "quantity_of_comments": { "type": "integer", "default": 0 }
+                                },
+                                "required": ["component_name", "product_name"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful prediction",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": { "type": "string" },
+                                        "predicted_severity": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Invalid request" },
+                    "500": { "description": "Server error" }
+                }
+            }
+        }
+    }
+}
